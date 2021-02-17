@@ -1,0 +1,4 @@
+long_short,quantities,entry_price,exit_price,hold_period,profit_and_loss,total_fees,net_profit_and_loss
+Short,1708,292.625,304.5,24,-20282.5,-0.0,-20282.5
+Short,1613,303.625,284.0,8,31655.12,-0.0,31655.12
+Long,1921,263.125,288.375,4,48505.25,-0.0,48505.25
