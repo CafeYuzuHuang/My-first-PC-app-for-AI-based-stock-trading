@@ -31,14 +31,12 @@ SaMaMind Lite為SaMaMind的簡化版本。
 	- numpy
 	- pandas
 	- pillow (PIL)
-	- re
 	- requests
 	- scipy
 	- seaborn
 	- selenium
-	- sklearn
+	- scikit-learn (sklearn)
 	- statsmodels
-	- tk (需使用Ttk模組，版本要求為8.5以上)
 - 內建python模組
 	- collections
 	- datetime
@@ -46,9 +44,11 @@ SaMaMind Lite為SaMaMind的簡化版本。
 	- math
 	- os
 	- random
+	- re
 	- shutil
 	- time
 	- threading
+	- tk (需使用Ttk模組，版本要求為8.5以上)
 	- webbrowser
 
 
@@ -140,14 +140,12 @@ SaMaMind Lite is the simplified version of SaMaMind.
 	- numpy
 	- pandas
 	- pillow (PIL)
-	- re
 	- requests
 	- scipy
 	- seaborn
 	- selenium
-	- sklearn
+	- scikit-learn (sklearn)
 	- statsmodels
-	- tk (with Ttk, 8.5 or later)
 - Build-in python modules listed alphabetically:
 	- collections
 	- datetime
@@ -155,9 +153,11 @@ SaMaMind Lite is the simplified version of SaMaMind.
 	- math
 	- os
 	- random
+	- re
 	- shutil
 	- time
 	- threading
+	- tk (with Ttk, 8.5 or later)
 	- webbrowser
 
 
