@@ -46,6 +46,11 @@ Default_TechInd_List = list(myParams.DefinedTechInd)
 Cols_1 = []
 Cols_2 = []
 
+# 是否使用成交量作為input，由於台股成交量容易受法規
+# (處置股、現沖與融資券規定、以及日後的造市制度)和漲停板干擾，故不建議使用！
+IsVolUsed = False
+# IsVolUsed = True # for testing & comparison
+
 # 滑價成本：流動性好的股票一般可以低到0.1%左右，但流動性差的可以價差好幾個tick
 # 在此取台股tick差的最大比例，即100.5元的台股報價跳動一檔差0.5元，即0.5%
 Default_Spread = 0.005 # 買賣價差 = 賣價 - 買價 = Ask - Bid > 0.
@@ -57,7 +62,7 @@ Default_Keep_Cash_Ratio = 0.5 # 每次買進證券時預留現金的比例
 Default_Hold_Period_Upper = myPostP.TradePeriod # 持有天數上限
 # Default_Hold_Period_Upper = None # 不設定持有天期上限，即不對時間成本做懲罰
 
-# 全域變數：以引數傳遞，用於TA_Streamer與TA_Streamer_1
+# 全域變數：以引數傳遞，用於TAStreamer
 Spread = Default_Spread
 Prep_IsReturnBasis = Default_Prep_IsReturnBasis
 # 全域變數：直接於Indicator_1調用
@@ -165,22 +170,30 @@ def GetColNames(td = 20, kwlist = None):
     if kwlist is None: # Do not apply [] or {} as default argument(s)!
         kwlist = Default_TechInd_List
     myPostP.GetSelectedTechInd(td, kwlist)
-    Cols_1 = myPostP.Cols_Selected # 價量/技術指標數值
-    cols_tmp = myPostP.Cols_R_Included
-    # 以下取得價格與技術指標之報酬率(一階差分)，以及昨量比
-    Cols_2 = [item for item in cols_tmp if not item in Cols_1]
+    if not IsVolUsed:
+        Logger.info("Caution: column 'V' and 'R-V' are not used!")
+        ColV = ["V", "R-V"] # may include VWMA columns
+        Cols_1 = [i for i in myPostP.Cols_Selected if not i in ColV]
+        cols_tmp = myPostP.Cols_R_Included
+        Cols_2 = [i for i in cols_tmp if (not i in Cols_1 and not i in ColV)]
+    else:
+        Logger.info("Column 'V' and 'R-V' are applied to the environment!")
+        Cols_1 = myPostP.Cols_Selected # 價量/技術指標數值
+        # 以下取得價格與技術指標之報酬率(一階差分)，以及昨量比
+        Cols_2 = [i for i in myPostP.Cols_R_Included if not i in Cols_1]
     return None
 
 @myLog.Log_Error(myParams.DefaultErrorLogLevel)
 # @myLog.Log_Func(myParams.DefaultFuncLogLevel, None, None)
-def Penaltize_Time_Fee(time_fee, t_hold, \
-                       t_up_lim = Hold_Period_Upper, rel_fac = 10.):
+def Penaltize_Time_Fee(time_fee, t_hold):
     """
     訓練 RL 模型時使用：使時間成本為持倉時間的函數，使用 relu function
     Penaltized time fee =
         time fee (if t_hold <= t_up_lim)
         time fee + fac * (t_hold - t_up_lim) (if t_hold > t_up_lim)
     """
+    t_up_lim = Hold_Period_Upper
+    rel_fac = 10.
     penaltized_time_fee = time_fee
     if t_hold > t_up_lim:
         fac = rel_fac * time_fee / t_up_lim
@@ -932,8 +945,20 @@ class Indicator_1(Env):
             self.unrl_pnl = (self._price - self._prices_history[-1][-1]) \
                 / self._prices_history[-1][-1]
         # 回傳 state 時，不需要 bid, ask, mid prices
+        # 依據history_length設定來決定回傳多少根K棒資料
+        # 例如history_length = 3則回傳今日+昨日K棒資訊
+        his_k = []
+        if self._history_length > 2:
+            for i in range(self._history_length - 2):
+                kk = -2 - i
+                if not IsVolUsed: # O, H, L, C
+                    his_k.append(self._prices_history[kk][0:4])
+                else: # V, O, H, L, C
+                    his_k.append(self._prices_history[kk][0:5])
+        
         return np.concatenate(
             [self._prices_history[-1][:-3]] + 
+            his_k + 
             [
                 np.array([self.unrl_pnl]),
                 np.array(self._position)

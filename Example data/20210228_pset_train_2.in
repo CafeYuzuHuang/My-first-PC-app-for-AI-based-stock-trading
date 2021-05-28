@@ -1,0 +1,31 @@
+{'trading_tax': 0.003, 
+'trading_fee': 0.001, 
+'time_fee': 0.00003, 
+'train_test_split': 0.8, 
+'episodes': 4, 
+'episode_length': 150, 
+'history_length': 2, 
+'prep_isreturnbasis': False, 
+'initial_cash': 1000000, 
+'max_underwater_ratio': -0.5, 
+'keep_cash_ratio': 0.5, 
+'spread': 0.0, 
+'unit_quantity': 1000, 
+'hold_period_upper': 20, 
+'chosen_agent': 'DDQN', 
+'gamma': 0.50, 
+'epsilon_min': 0.01, 
+'neurons_per_layer': 24, 
+'hiddenlayer_shape': [1, 1, 1], 
+'activation': 'relu', 
+'l2_strength': 0.01, 
+'learning_rate': 0.001, 
+'memory_size': 1024, 
+'batch_size': 32, 
+'train_interval': 100, 
+'update_target_freq': 100, 
+'validation_split': 0.25}
+
+
+
+

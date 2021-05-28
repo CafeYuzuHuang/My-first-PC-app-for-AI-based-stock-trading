@@ -94,9 +94,8 @@ def WhiteNoiseTest(ret, nlags = 20, isprintsummary = False):
     若接受虛無假設則表示為白雜訊(純隨機序列)，回傳值為False
     若拒絕虛無假設則表示序列並非隨機的，回傳值為True
     """
-    acf = stattools.acf(ret, unbiased = False, nlags = nlags, \
-                        qstat = False, fft = True, alpha = None, \
-                        missing = "drop")
+    acf = stattools.acf(ret, nlags = nlags, qstat = False, \
+                        fft = True, alpha = None, missing = "drop")
     n = len(ret)
     results = stattools.q_stat(acf, n)
     if isprintsummary:

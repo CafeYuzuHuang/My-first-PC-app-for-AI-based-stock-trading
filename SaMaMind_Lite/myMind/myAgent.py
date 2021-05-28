@@ -3,14 +3,16 @@
 import os
 import numpy as np
 import random
-from keras.layers import Dense, Lambda
-from keras.models import Sequential, Model
-from keras.optimizers import Adam
-from keras.models import load_model
-from keras import backend as K
-from keras.regularizers import l2
+from tensorflow.config import list_physical_devices
+from tensorflow.keras.layers import Dense, Lambda, LeakyReLU
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import load_model
+from tensorflow.keras import backend as K
+from tensorflow.keras.regularizers import l2
 from myUtilities import myParams
 from myUtilities import myLog
+
 
 """
 改寫自 Saeed Rahman 等人的研究和程式碼
@@ -37,21 +39,38 @@ else: # imported
     RefPath = os.path.dirname(modulepath)
 Logger = myLog.Log(myParams.DefaultRootLogLevel, LogName)
 
+# 將運算裝置寫入log
+try:
+    Logger.info(" ***  Physical devices for DRL computing  *** ")
+    Logger.info('{}'.join(map(str, list_physical_devices("CPU"))))
+    Logger.info('{}'.join(map(str, list_physical_devices("GPU"))))
+    Logger.info(" ***  (A blank line above means no GPU used.)  *** \n")
+except:
+    Logger.warning("Call tf.config.list_physical_devices runs into trouble!")
+
 Model_Path = RefPath + '\\' + myParams.AI_Foldername # 存放模型參數
-if not os.path.isdir(Model_Path):
-    os.mkdir(Model_Path)
+if not os.path.isdir(Model_Path): os.mkdir(Model_Path)
 
 # Global constants
-Act_List = ["sigmoid", "softmax", "tanh", "relu"]
 Agent_List = ["DQN", "DDQN", "DDDQN"]
 Train_Test = "train"
 Symbol = ''
+Act_List = ["sigmoid", "softmax", "tanh", "relu", "leakyrelu", "selu", "elu"]
+LeakyAlpha = 0.3 # leaky slope, keras default = 0.3
+
+# GradClip = "norm" # clip by norm
+# GradClip = "value" # clip by value
+GradClip = "none" # no clipping; default
+
+BiasInitializer = "zeros" # default
+KernelInitializer = "glorot_uniform" # default
+# KernelInitializer = "he_normal"
+# KernelInitializer = "lecun_normal"
 
 Default_Neurons_Per_Layer = 24
 Default_Activation = "relu"
 Default_Agent = "DDDQN"
 Default_Epsilon_Min = 0.01 # 0 <= epsilon <= 1
-# Default_Epsilon_Min = 1.0 # full exploration (random agent)
 Default_L2_Strength = 0.01
 Default_Train_Interval = 100
 Default_Update_Target_Freq = 100
@@ -314,8 +333,12 @@ class DQNAgent(Agent):
         self.train_interval = train_interval
         self.update_target_freq = update_target_freq
         self.batch_size = batch_size
-        self.brain = self._build_brain()
-        # self.brain_ = self._build_brain()
+        if Activation.lower() == "leakyrelu":
+            self.brain = self._build_brain_2()
+            # self.brain_ = self._build_brain_2()
+        else:
+            self.brain = self._build_brain()
+            # self.brain_ = self._build_brain()
         self.i = 0
         self.train_test = train_test
         self.symbol = symbol # model name
@@ -345,18 +368,80 @@ class DQNAgent(Agent):
         # 使用 early stopping (callbacks) 或 drop-out 等
         # 以下對權重施加L2 norm (ridge regularization)
         HLNPR = HiddenLayer_NParams_Ratio
-        brain.add(Dense(neurons_per_layer * HLNPR[0],
-                        input_dim = self.state_size,
+        brain.add(Dense(neurons_per_layer * HLNPR[0], 
+                        input_dim = self.state_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
                         activation = activation, 
                         kernel_regularizer = l2(l2str))) # input layer
         for i in range(1, len(HLNPR)):
             brain.add(Dense(neurons_per_layer * HLNPR[i], 
+                            use_bias = True, 
+                            kernel_initializer = KernelInitializer, 
+                            bias_initializer = BiasInitializer, 
                             activation = activation, 
                             kernel_regularizer = l2(l2str)))
         brain.add(Dense(self.action_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
                         activation = "linear")) # output layer
-        brain.compile(loss = "mse", 
-                      optimizer = Adam(lr = self.learning_rate))
+        if GradClip.lower() == "norm":
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipnorm = 1.0))
+        elif GradClip.lower() == "value":             
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipvalue = 1.0))
+        else: # default: no clipping
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate))
+        # 列印模型摘要
+        brain.summary(print_fn = Logger.info) # change print handler
+        return brain
+    
+    def _build_brain_2(self):
+        """ Build the agent's brain (deep neural network) """
+        # Relu 對於取得稀疏性有幫助，但可能會導致零梯度的產生(dying Relu problem)
+        # 因此，若稀疏性不是那麼重要(非影像辨識問題須強調對比性)，相對
+        # 我們會希望提升訓練能力並增加DNN深度，故適合改用leakyrelu
+        neurons_per_layer = Neurons_Per_Layer
+        l2str = L2_Strength
+        brain = Sequential()
+        HLNPR = HiddenLayer_NParams_Ratio
+        brain.add(Dense(neurons_per_layer * HLNPR[0], 
+                        input_dim = self.state_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
+                        kernel_regularizer = l2(l2str))) # input layer
+        brain.add(LeakyReLU(alpha = LeakyAlpha))
+        for i in range(1, len(HLNPR)):
+            brain.add(Dense(neurons_per_layer * HLNPR[i], 
+                            use_bias = True, 
+                            kernel_initializer = KernelInitializer, 
+                            bias_initializer = BiasInitializer, 
+                            kernel_regularizer = l2(l2str)))
+            brain.add(LeakyReLU(alpha = LeakyAlpha))
+        brain.add(Dense(self.action_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
+                        activation = "linear")) # output layer
+        if GradClip.lower() == "norm":
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipnorm = 1.0))
+        elif GradClip.lower() == "value":             
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipvalue = 1.0))
+        else: # default: no clipping
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate))
+        
         # 列印模型摘要
         brain.summary(print_fn = Logger.info) # change print handler
         return brain
@@ -482,8 +567,12 @@ class DDQNAgent(Agent):
         self.train_interval = train_interval
         self.update_target_freq = update_target_freq
         self.batch_size = batch_size
-        self.brain = self._build_brain()
-        self.brain_ = self._build_brain()
+        if Activation.lower() == "leakyrelu":
+            self.brain = self._build_brain_2()
+            self.brain_ = self._build_brain_2()
+        else:
+            self.brain = self._build_brain()
+            self.brain_ = self._build_brain()
         self.i = 0
         self.train_test = train_test
         self.symbol = symbol
@@ -508,22 +597,80 @@ class DDQNAgent(Agent):
         l2str = L2_Strength
         brain = Sequential()
         HLNPR = HiddenLayer_NParams_Ratio
-        brain.add(Dense(neurons_per_layer * HLNPR[0],
-                        input_dim = self.state_size,
+        brain.add(Dense(neurons_per_layer * HLNPR[0], 
+                        input_dim = self.state_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
                         activation = activation, 
                         kernel_regularizer = l2(l2str))) # input layer
         for i in range(1, len(HLNPR)):
             brain.add(Dense(neurons_per_layer * HLNPR[i], 
+                            use_bias = True, 
+                            kernel_initializer = KernelInitializer, 
+                            bias_initializer = BiasInitializer, 
                             activation = activation, 
                             kernel_regularizer = l2(l2str)))
         brain.add(Dense(self.action_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
                         activation = "linear"))
-        brain.compile(loss = "mse", 
-                      optimizer = Adam(lr = self.learning_rate))
+        if GradClip.lower() == "norm":
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipnorm = 1.0))
+        elif GradClip.lower() == "value":             
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipvalue = 1.0))
+        else: # default: no clipping
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate))
         # 列印模型摘要
         brain.summary(print_fn = Logger.info) # change print handler
         return brain
     
+    def _build_brain_2(self):
+        """ Build the agent's brain (deep neural network) """
+        neurons_per_layer = Neurons_Per_Layer
+        l2str = L2_Strength
+        brain = Sequential()
+        HLNPR = HiddenLayer_NParams_Ratio
+        brain.add(Dense(neurons_per_layer * HLNPR[0], 
+                        input_dim = self.state_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
+                        kernel_regularizer = l2(l2str))) # input layer
+        brain.add(LeakyReLU(alpha = LeakyAlpha))
+        for i in range(1, len(HLNPR)):
+            brain.add(Dense(neurons_per_layer * HLNPR[i], 
+                            use_bias = True, 
+                            kernel_initializer = KernelInitializer, 
+                            bias_initializer = BiasInitializer, 
+                            kernel_regularizer = l2(l2str)))
+            brain.add(LeakyReLU(alpha = LeakyAlpha))
+        brain.add(Dense(self.action_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
+                        activation = "linear")) # output layer
+        if GradClip.lower() == "norm":
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipnorm = 1.0))
+        elif GradClip.lower() == "value":             
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipvalue = 1.0))
+        else: # default: no clipping
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate))
+        # 列印模型摘要
+        brain.summary(print_fn = Logger.info) # change print handler
+        return brain
+     
     def act(self, state, test=False):
         """ Acting policy of the DDQNAgent """
         act_values=[]
@@ -643,8 +790,12 @@ class DDDQNAgent(Agent):
         self.train_interval = train_interval
         self.update_target_freq = update_target_freq
         self.batch_size = batch_size
-        self.brain = self._build_brain()
-        self.brain_ = self._build_brain()
+        if Activation.lower() == "leakyrelu":
+            self.brain = self._build_brain_2()
+            self.brain_ = self._build_brain_2()
+        else:
+            self.brain = self._build_brain()
+            self.brain_ = self._build_brain()
         self.i = 0
         self.train_test = train_test
         self.symbol = symbol
@@ -669,29 +820,33 @@ class DDDQNAgent(Agent):
         l2str = L2_Strength
         brain = Sequential()
         HLNPR = HiddenLayer_NParams_Ratio
-        brain.add(Dense(neurons_per_layer * HLNPR[0],
-                        input_dim = self.state_size,
+        brain.add(Dense(neurons_per_layer * HLNPR[0], 
+                        input_dim = self.state_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
                         activation = activation, 
                         kernel_regularizer = l2(l2str))) # input layer
         for i in range(1, len(HLNPR)):
             brain.add(Dense(neurons_per_layer * HLNPR[i], 
+                            use_bias = True, 
+                            kernel_initializer = KernelInitializer, 
+                            bias_initializer = BiasInitializer, 
                             activation = activation, 
                             kernel_regularizer = l2(l2str)))
         brain.add(Dense(self.action_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
                         activation = "linear")) # original output layer
         # 以下與DQN和DDQN不同
         # 上面原本建立的 output layer 最後不會用到
         layer = brain.layers[-2]  # Get the second last layer of the model
         
-        # 2021.01.24 debugging: 
-        # Manually update brain.output first, then evaluate its shape
-        # (in order to avoid type(brain.output) = NoneType!)
-        Logger.warning("Future ver. depreciation: intended attribute call")
-        Logger.warning("Update brain.output: %s" % brain.output) # 載入屬性資訊
-        Logger.warning("Possibly workable alternative: via tf.keras.backend")
-        
-        # nb_action = brain.output._keras_shape[-1] # attribute error?
-        nb_action = brain.output._shape_val[-1] # 2021.01.22 改寫
+        # 2021.04.14: use one of the following statements:
+        nb_action = brain.output.shape[-1]
+        # nb_action = brain.output.get_shape()[-1]
+        # nb_action = brain.output_shape[-1]
         
         # 在 output layer 後方再加一層 y layer, size = actions + 1
         # (Value stream size = 1, advantage stream size = action_size)
@@ -699,19 +854,86 @@ class DDDQNAgent(Agent):
         
         # y layer (Value + Advantage) 後需要一層 output layer
         # Advantage stream 扣除均值，使 Q(s,a) = V(s) + A(s,a) 有唯一表示
-        # Lambda layer 的用法可參考如下：
-        # https://github.com/germain-hug/Deep-RL-Keras/blob/master/DDQN/agent.py
         outputlayer = Lambda(lambda a: K.expand_dims(a[:, 0], -1) \
                              + a[:, 1:] - K.mean(a[:, 1:], keepdims = True),
                              output_shape = (nb_action,))(y)
         # 指定 outputs 為新建立的
         brain = Model(inputs = brain.input, outputs = outputlayer)
-        brain.compile(loss = "mse", 
-                      optimizer = Adam(lr = self.learning_rate))
+        if GradClip.lower() == "norm":
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipnorm = 1.0))
+        elif GradClip.lower() == "value":             
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipvalue = 1.0))
+        else: # default: no clipping
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate))
         # 列印模型摘要
         brain.summary(print_fn = Logger.info) # change print handler
         return brain
     
+    def _build_brain_2(self):
+        """ Build the agent's brain (deep neural network) """
+        neurons_per_layer = Neurons_Per_Layer
+        l2str = L2_Strength
+        brain = Sequential()
+        HLNPR = HiddenLayer_NParams_Ratio
+        brain.add(Dense(neurons_per_layer * HLNPR[0], 
+                        input_dim = self.state_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
+                        kernel_regularizer = l2(l2str))) # input layer
+        brain.add(LeakyReLU(alpha = LeakyAlpha))
+        for i in range(1, len(HLNPR)):
+            brain.add(Dense(neurons_per_layer * HLNPR[i], 
+                            use_bias = True, 
+                            kernel_initializer = KernelInitializer, 
+                            bias_initializer = BiasInitializer, 
+                            kernel_regularizer = l2(l2str)))
+            brain.add(LeakyReLU(alpha = LeakyAlpha))
+        brain.add(Dense(self.action_size, 
+                        use_bias = True, 
+                        kernel_initializer = KernelInitializer, 
+                        bias_initializer = BiasInitializer, 
+                        activation = "linear")) # original output layer
+        # 以下與DQN和DDQN不同
+        # 上面原本建立的 output layer 最後不會用到
+        layer = brain.layers[-2]  # Get the second last layer of the model
+        
+        # 2021.04.14: use one of the following statements:
+        nb_action = brain.output.shape[-1]
+        # nb_action = brain.output.get_shape()[-1]
+        # nb_action = brain.output_shape[-1]
+        
+        # 在 output layer 後方再加一層 y layer, size = actions + 1
+        # (Value stream size = 1, advantage stream size = action_size)
+        y = Dense(nb_action + 1, activation = "linear")(layer.output)
+        
+        # y layer (Value + Advantage) 後需要一層 output layer
+        # Advantage stream 扣除均值，使 Q(s,a) = V(s) + A(s,a) 有唯一表示
+        outputlayer = Lambda(lambda a: K.expand_dims(a[:, 0], -1) \
+                             + a[:, 1:] - K.mean(a[:, 1:], keepdims = True),
+                             output_shape = (nb_action,))(y)
+        # 指定 outputs 為新建立的
+        brain = Model(inputs = brain.input, outputs = outputlayer)
+        if GradClip.lower() == "norm":
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipnorm = 1.0))
+        elif GradClip.lower() == "value":             
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate, 
+                                           clipvalue = 1.0))
+        else: # default: no clipping
+            brain.compile(loss = "mse", 
+                          optimizer = Adam(lr = self.learning_rate))
+        # 列印模型摘要
+        brain.summary(print_fn = Logger.info) # change print handler
+        return brain
+
     def act(self, state, test=False):
         """
         Acting Policy of the DDDQNAgent

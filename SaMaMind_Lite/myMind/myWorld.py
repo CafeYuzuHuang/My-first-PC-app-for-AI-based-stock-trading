@@ -880,6 +880,42 @@ def Batch_Describe_Performance(fnamelist):
         # 存檔記錄(於SaMaMind目錄下)
         r_path = RefPath + '\\' + "samamind_performance.xlsx"
         perf_df.to_excel(r_path, index = False, header = True)
+        # 結果視覺化 (選擇數值類型欄位進行分析)
+        perf_df_new = perf_df.drop(columns = ["test_fname", 
+                                              "test_days", 
+                                              "initial_cash"])
+        p_path = RefPath + '\\' + "samamind_performance"
+        try:
+            assert perf_df_new.shape[0] >= 5
+            myAna.Show_Perf_Dist(perf_df_new, 
+                                 mode = "hist", 
+                                 verbose = True, 
+                                 save_path = p_path + "_hist.png")
+            myAna.Show_Perf_Dist(perf_df_new, 
+                                 mode = "violin", 
+                                 verbose = False, 
+                                 save_path = p_path + "_violin.png")
+            Logger.debug("Finish plotting performance distribution of raw data!")
+        except:
+            Logger.info("Not enough raw data for visualization!")
+        # Filter out rows with no. traders <= 2, then replot again
+        # Current ver. only supports single filter condition
+        # (Actually it can be extended thanks to the powerful pandas capability)
+        try: 
+            fil_col = "no_trades"
+            thres_val = 2
+            assert perf_df_new[perf_df_new[fil_col] > thres_val].shape[0] >= 5
+            myAna.Show_Perf_Dist(perf_df_new[perf_df_new[fil_col] > thres_val], 
+                                 mode = "hist", 
+                                 verbose = True, 
+                                 save_path = p_path + "_hist_filtered.png")
+            myAna.Show_Perf_Dist(perf_df_new[perf_df_new[fil_col] > thres_val], 
+                                 mode = "violin", 
+                                 verbose = False, 
+                                 save_path = p_path + "_violin_filtered.png")
+            Logger.debug("Finish plot perf. distribution of filtered data!")
+        except:
+            Logger.info("Not enough filtered data for visualization!")
     except Exception as e:
         Logger.error("Problem encountered during exporting results!")
         Logger.error("Probably due to no performance evaluated!")

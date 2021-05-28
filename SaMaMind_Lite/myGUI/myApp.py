@@ -197,14 +197,19 @@ class TkTab(ttk.Frame):
         self.ttl["state"] = "disabled"
         
         ### 版本資訊
-        self.vinfo = tk.Text(self) # 多行文字標籤
-        self.vinfo.place(relx = 0.1, rely = 0.2, \
-                         relwidth = 0.8, relheight = 0.6)
-        self.vscroll = ttk.Scrollbar(self.vinfo, cursor = "arrow")
+        # 避免scrollbar與text editor重疊遮住內容
+        # 將兩者放在共同的框架上並排，而非把scrollbar放在text editor內
+        self.vframe = ttk.Frame(self, borderwidth = 1, relief = "sunken")
+        self.vframe.place(relx = 0.1, rely = 0.2, \
+                          relwidth = 0.8, relheight = 0.6)
+        self.vinfo = tk.Text(self.vframe, borderwidth = 0) # 多行文字標籤
+        self.vinfo.pack(side = "left", fill = "both", expand = 1)
+        self.vscroll = ttk.Scrollbar(self.vframe, cursor = "arrow")
         self.vscroll.pack(side = "right", fill = 'y')
         self.vinfo["yscrollcommand"] = self.vscroll.set # 連結捲動條與文字標籤
         # 當Scrollbar被捲動時，呼叫Text元件之視窗垂直捲動方法
         self.vscroll["command"] = self.vinfo.yview
+        
         # 設定標籤
         self.vinfo.tag_add("tage", 0.0) # 錯誤訊息用
         self.vinfo.tag_config("tage", foreground = "pale violet red", \
@@ -886,15 +891,16 @@ class TkTab(ttk.Frame):
             self.s.set("擷取資料失敗！")
         else: # 資料後處理
             try:
+                kw_list = list(myParams.DefinedTechInd) # Calculate all technical indicators
                 if datasrc == mySet.PriceDataSrc[0]: # 證交所
                     self.s.set("數據後處理...證交所資料格式解析")
-                    myPostP.Main(TD, KWList, \
+                    myPostP.Main(TD, kw_list, \
                                  myParams.Src_Dict[myParams.Src_List[0]])
-                    myPostP.Main(TD, KWList, \
+                    myPostP.Main(TD, kw_list, \
                                  myParams.Src_Dict[myParams.Src_List[1]])
                 elif datasrc == mySet.PriceDataSrc[1]: # Yahoo finance
                     self.s.set("數據後處理...雅虎財經資料格式解析")
-                    myPostP.Main(TD, KWList, \
+                    myPostP.Main(TD, kw_list, \
                                  myParams.Src_Dict[myParams.Src_List[2]])
                 else:
                     raise Exception("無效的資料來源： " + str(datasrc))
@@ -1061,12 +1067,14 @@ class TkTab(ttk.Frame):
             mpath = RefPath + '\\' + myParams.AI_Foldername
             aname = self.model_name + '_' + myAgent.Chosen_Agent + '.h5'
             fpath = mpath + '\\' + aname
-            pydot_path = mpath + '\\' + aname + '.png'
             dnn = myDNNVisualizer.load_model(fpath)
+            """
+            pydot_path = mpath + '\\' + aname + '.png'
             myDNNVisualizer.Export_Model_Struct(dnn, 
                                                 to_file = pydot_path, 
                                                 show_shapes = True, 
                                                 show_layer_names = True)
+            """
             vis_path = mpath + '\\' + aname + "_network.png"
             ins = dnn.get_weights()[0].shape[0]
             outs = dnn.get_weights()[-1].shape[0]
@@ -1206,9 +1214,13 @@ class TkTab(ttk.Frame):
             tk.messagebox.askquestion("資料夾清空", 
                                       "請確認是否清空：\n" + rm_folder)
         if msgbox == "yes":
-            rmtree(rm_folder, ignore_errors = True)
-            sleep(2)
-            tk.messagebox.showinfo("完成", "資料夾已清空！")
+            if os.path.isdir(rm_folder):
+                rmtree(rm_folder, ignore_errors = True)
+                sleep(2)
+                tk.messagebox.showinfo("完成", "資料夾已清空！")
+            else:
+                sss = "以下資料夾不存在: " + rm_folder
+                tk.messagebox.showinfo("嘗試失敗", sss)
         else:
             tk.messagebox.showinfo("完成", "取消清空資料夾！")
         if not os.path.isdir(rm_folder):
@@ -1226,8 +1238,9 @@ class TkTab(ttk.Frame):
             self.fp.set(fpath) # GUI輸出顯示
             # 將路徑的slash做修正：
             # fnext = re.findall(r'[^\\]+', fpath)[-1]
-            fnext = re.findall(r'[^/]+', fpath)[-1]
-            fpath_new = myPostP.PostP_Path + '\\' + fnext
+            # fnext = re.findall(r'[^/]+', fpath)[-1]
+            # fpath_new = myPostP.PostP_Path + '\\' + fnext
+            fpath_new = re.sub(r'/', r'\\', fpath) # 允許預設路徑以外的來源
             self.infp = [fpath_new] # 存入清單待用
             try:
                 self.btn_k["state"] = "normal"

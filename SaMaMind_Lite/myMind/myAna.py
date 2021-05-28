@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib.ticker import MaxNLocator
+from seaborn import violinplot, histplot
 
 from myUtilities import myParams
 
@@ -211,7 +212,7 @@ def Describe_Performance(asset_record_df, trade_record_df, riskfreerate = 0.):
     
     # Analysis based on the asset record:
     # (1) basic info
-    perf_dict["test_days"] = x[-1] - x[0]
+    perf_dict["test_days"] = x[-1] - x[0] + 1 # 含首日故加1
     perf_dict["initial_cash"] = y1[0]
     
     # (2) earning and risk
@@ -237,7 +238,7 @@ def Describe_Performance(asset_record_df, trade_record_df, riskfreerate = 0.):
     # (3) return based on initial asset value
     perf_dict["return"] = (y1[-1]/y1[0] - 1.)*100.
     perf_dict["annual_return"] = 100. * \
-        ((y1[-1]/y1[0]) ** (myParams.DaysPerYear/perf_dict["test_days"]) - 1.)
+        ((y1[-1]/y1[0]) ** (myParams.OpenDaysPerYear/perf_dict["test_days"]) - 1.)
     perf_dict["max_return"] = (max(y1)/y1[0] - 1.)*100.
     perf_dict["min_return"] = (min(y1)/y1[0] - 1.)*100.
     
@@ -301,5 +302,50 @@ def Describe_Performance(asset_record_df, trade_record_df, riskfreerate = 0.):
         perf_dict["gain_pain_ratio"] = 0.
         perf_dict["win_rate"] = 0.
     return perf_dict
+
+def Show_Perf_Dist(perf_df, mode = "hist", verbose = True, save_path = None):
+    """
+    顯示各項交易績效對標的的分布，目前分析20個績效指標
+    mode = "hist" or "violin"
+    """
+    n_r = 4
+    n_c = 5
+    try:
+        n = len(perf_df.columns)
+        n_items = len(perf_df.index)
+        counter = 0
+        fig, axs = plt.subplots(nrows = n_r, ncols = n_c, \
+                                constrained_layout = True, \
+                                figsize = (20, 16)) # figsize = (width, height)
+        fig.suptitle("Trading performance of " + str(n_items) + " tests")
+        for i in range(n_r):
+            for j in range(n_c):
+                if counter >= n:
+                    break
+                else:
+                    col = perf_df.columns[counter]
+                    if mode.lower() == "hist":
+                        histplot(x = perf_df[col].values, ax = axs[i, j], \
+                                 kde = True)
+                    else:
+                        violinplot(x = perf_df[col].values, ax = axs[i, j])
+                    ss = col
+                    if verbose is True:
+                        m = round(perf_df[col].mean(), 2)
+                        s = round(perf_df[col].std(), 2)
+                        upper = round(perf_df[col].max(), 2)
+                        lower = round(perf_df[col].min(), 2)
+                        ss += ": \nmean: " + str(m) + "\nstd: " + str(s) + \
+                            "\nmax: " + str(upper) + "\nmin: " + str(lower)
+                    axs[i, j].set_title(ss)
+                counter += 1
+        plt.show()
+    except Exception as e:
+        print("Problem encountered during visualizing trading performance!")
+        print("{}".format(e))
+    else:
+        if not save_path is None:
+            plt.savefig(save_path)
+    return None
 
 # Done!

@@ -9,9 +9,10 @@ import seaborn as sns
 
 # Require pydot (and pydotplus) module(s) installed within the 
 # tensorflow environment.
-from keras.utils.vis_utils import plot_model
-from keras.models import load_model
-# from keras import backend as K
+# from keras.utils.vis_utils import plot_model
+
+# from keras.models import load_model
+from tensorflow.keras.models import load_model
 
 from myUtilities import myParams
 
@@ -69,18 +70,6 @@ def VisualizeDNN(k_weights, in_name, out_name, fpath = None):
     hid_txt_coor_y = []
     
     # Get info
-    # sklearn version
-    """
-    n_connects_layer = len(dnn_coef)
-    for ii in range(0, n_connects_layer):
-        # Get # of inputs and neurons of each hidden layer
-        neurons_each_layer.append(len(dnn_coef[ii]))
-    neurons_each_layer.append(len(dnn_coef[-1][0])) # # of outputs
-    max_neurons = max(neurons_each_layer)
-    # min_neurons = min(neurons_each_layer)
-    """
-    
-    # keras version
     # Generate dnn_coef from k_weights
     dnn_coef = []
     for i in range(len(k_weights)):
@@ -221,13 +210,13 @@ def Load_Model(m_path, **kwargs):
     """
     return load_model(m_path, **kwargs)
 
-def Export_Model_Struct(k_model, **kwargs):
-    """
-    輸出關於模型的架構描述
-    為 Keras 中 plot_model 的 wrapper，參數定義與之相同
-    """
-    plot_model(k_model, **kwargs)
-    return None
+# def Export_Model_Struct(k_model, **kwargs):
+#     """
+#     輸出關於模型的架構描述
+#     為 Keras 中 plot_model 的 wrapper，參數定義與之相同
+#     """
+#     plot_model(k_model, **kwargs)
+#     return None
 
 def Print_Model_Struct(k_model):
     """ 螢幕輸出模型的架構描述 """
@@ -263,40 +252,50 @@ def Print_Model_Struct(k_model):
 
 # Testing
 if __name__ == '__main__':
+    model_name = "0228_train_2_DDQN"
+    
     # Keras .h5 格式權重參數儲存路徑
     Model_Path = os.path.dirname(os.getcwd()) + \
         '\\' + myParams.AI_Foldername
     if not os.path.isdir(Model_Path):
         os.mkdir(Model_Path)
-    model_name = "demo_test_DDDQN.h5"
-    fpath = Model_Path + '\\' + model_name
-    pydot_path = Model_Path + '\\' + "demo_test_DDDQN.png"
+    f_path = Model_Path + '\\' + model_name + ".h5"
+    pydot_path = Model_Path + '\\' + model_name + ".png"
     
     # 檢查讀取的檔案
-    dnn = load_model(fpath)
+    dnn = load_model(f_path)
     print("Summary of the keras model")
-    print("file path: ", fpath)
+    print("file path: ", f_path)
     dnn.summary() # Show the model summary
     Print_Model_Struct(dnn)
     # 輸出模型的架構描述
     # plot_model(dnn, to_file = pydot_path, show_shapes = True, \
     #            show_layer_names = True)
+    """
     Export_Model_Struct(dnn, to_file = pydot_path, \
                         show_shapes = True, \
                         show_layer_names = True) # wrapper of plot_model
+    """
     
     # 圖像化
-    vis_path = Model_Path + '\\' + "demo_test_DDDQN_network.png"
-    vis_path_1 = Model_Path + '\\' + "demo_test_DDDQN_heatmap.png"
+    vis_path = Model_Path + '\\' + model_name + "_network.png"
     ins = dnn.get_weights()[0].shape[0]
     outs = dnn.get_weights()[-1].shape[0]
-    innames = ["In-" + str(i+1) for i in range(ins)]
-    outnames = ["Out-" + str(i+1) for i in range(outs)]
+    innames = ["In-" + str(_+1) for _ in range(ins)]
+    outnames = ["Out-" + str(_+1) for _ in range(outs)]
     # get_weights() 方法回傳一個 list，成員為 numpy.ndarray 類型
     # 其中成員可能為1-d或2-d array，須以 shape 屬性確認
     dnncoef = dnn.get_weights()
-    # VisualizeNetwork(dnncoef[0], vis_path_1)
-    VisualizeNetwork(dnncoef[4], vis_path_1)
-    # VisualizeNetwork(dnncoef[-1], vis_path_1) # cause error if input bias
     VisualizeDNN(dnncoef, innames, outnames, vis_path)
+    for _ in range(len(dnncoef)):
+        try:
+            # Raise exception if dnncoef[_] is the bias array
+            assert len(dnncoef[_].shape) == 2
+            vis_path_1 = Model_Path + '\\' + model_name + \
+                "_heatmap-" + str(_) + ".png"
+            VisualizeNetwork(dnncoef[_], vis_path_1)
+        except Exception as e:
+            print(e)
+    # VisualizeNetwork(dnncoef[0], vis_path_1)
+    # VisualizeNetwork(dnncoef[-1], vis_path_1) # cause error if input bias
 # Done!
