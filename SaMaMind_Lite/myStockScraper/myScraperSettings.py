@@ -260,7 +260,7 @@ TWSE_Stock_Headers = {
     "Connection": "keep-alive",
     "Host": "isin.twse.com.tw",
     "Referer": "https://isin.twse.com.tw/isin/class_i.jsp?kind=2&owncode=&stockname=&isincode=&markettype=1&issuetype=3&industry_code=",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"}
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 TWSE_ETF_Headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -269,7 +269,7 @@ TWSE_ETF_Headers = {
     "Connection": "keep-alive",
     "Host": "isin.twse.com.tw",
     "Referer": "https://isin.twse.com.tw/isin/class_i.jsp?kind=2&owncode=&stockname=&isincode=&markettype=1&issuetype=3&industry_code=",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"}
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 TPEX_Stock_Headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -278,7 +278,7 @@ TPEX_Stock_Headers = {
     "Connection": "keep-alive",
     "Host": "isin.twse.com.tw",
     "Referer": "https://isin.twse.com.tw/isin/class_i.jsp?kind=2&owncode=&stockname=&isincode=&markettype=2&issuetype=1&industry_code=",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"}
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 TPEX_ETF_Headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -287,7 +287,7 @@ TPEX_ETF_Headers = {
     "Connection": "keep-alive",
     "Host": "isin.twse.com.tw",
     "Referer": "https://isin.twse.com.tw/isin/class_i.jsp?kind=2&owncode=&stockname=&isincode=&markettype=2&issuetype=1&industry_code=",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"}
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 TWSEPrice_Headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -296,7 +296,7 @@ TWSEPrice_Headers = {
     "Connection": "keep-alive",
     "Host": "www.twse.com.tw",
     "Referer": "https://www.twse.com.tw/zh/page/trading/exchange/STOCK_DAY.html",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"}
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 TPEXPrice_Headers = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
@@ -305,6 +305,6 @@ TPEXPrice_Headers = {
     "Connection": "keep-alive",
     "Host": "www.tpex.org.tw",
     "Referer": "https://www.tpex.org.tw/web/stock/aftertrading/daily_trading_info/st43.php?l=zh-tw",
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36"}
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"}
 
 # Done!
