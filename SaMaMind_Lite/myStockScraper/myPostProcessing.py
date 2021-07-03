@@ -131,7 +131,7 @@ def GetSelectedColNames(kwset):
         Cols_Selected = cols
         Cols_R_Included = cols + cols_r
         return None
-    for kw in kwset:
+    for kw in sorted(list(kwset)):
         if kw.upper() == "KD":
             cols += Cols_KD
             cols_r += Cols_KD_R
